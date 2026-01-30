@@ -1,0 +1,67 @@
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+getFirestore, collection, query, orderBy,
+onSnapshot, doc, deleteDoc, updateDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({
+apiKey: "AIzaSyCMwHzsfQZIHsEqKlkIpQNTbZxCVYhFoZ8",
+projectId: "fila-cord"
+});
+
+const db = getFirestore(app);
+let dadosFila = [];
+
+onSnapshot(query(collection(db,"fila"),orderBy("hora","asc")), snap=>{
+dadosFila = snap.docs.map(d=>({id:d.id,...d.data()}));
+renderizarFila();
+});
+
+window.renderizarFila = ()=>{
+const lista = document.getElementById("lista");
+lista.innerHTML = dadosFila.map(a=>{
+
+const hora = a.hora?.toDate
+? a.hora.toDate().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})
+: "--:--";
+
+return `
+<div class="card-aluno ${a.status==="CHAMANDO"?"status-chamando":""}">
+<div class="info-top">
+<div>
+<p><strong>${a.curso}</strong></p>
+<h3>${a.nome}</h3>
+<p>CPF: ${a.cpf}</p>
+<p><strong>Horário:</strong> ${hora}</p>
+${a.responsavel ? `<p><strong>Responsável:</strong> ${a.responsavel}</p>` : ""}
+${a.assunto ? `<p><strong>Assunto:</strong> ${a.assunto}</p>` : ""}
+</div>
+<div class="senha-tag">${a.senha}</div>
+</div>
+
+<div class="motivo-box">
+<strong>Motivo:</strong> ${a.motivo}
+</div>
+
+<div class="actions">
+<button class="btn btn-chamar" onclick="chamar('${a.id}','${a.nome}','${a.curso}')">CHAMAR</button>
+<button class="btn btn-finalizar" onclick="finalizar('${a.id}')">FINALIZAR</button>
+</div>
+</div>`;
+}).join("");
+};
+
+window.chamar = async(id,nome,curso)=>{
+await updateDoc(doc(db,"fila",id),{status:"CHAMANDO"});
+speechSynthesis.speak(new SpeechSynthesisUtterance(
+`Próximo atendimento ${nome}, curso ${curso}`
+));
+};
+
+window.finalizar = async(id)=>{
+if(confirm("Finalizar atendimento?")){
+await deleteDoc(doc(db,"fila",id));
+}
+};
+</script>
